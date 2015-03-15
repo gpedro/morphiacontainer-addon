@@ -1,34 +1,37 @@
 package org.tylproject.vaadin.addon.utils;
 
-import com.vaadin.data.Container;
-import com.vaadin.data.util.filter.*;
-import org.springframework.data.mongodb.core.query.Criteria;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
+
+import org.springframework.data.mongodb.core.query.Criteria;
+
+import com.vaadin.data.Container;
+import com.vaadin.data.util.filter.And;
+import com.vaadin.data.util.filter.Compare;
+import com.vaadin.data.util.filter.IsNull;
+import com.vaadin.data.util.filter.Not;
+import com.vaadin.data.util.filter.Or;
+import com.vaadin.data.util.filter.SimpleStringFilter;
+import com.vaadin.data.util.filter.UnsupportedFilterException;
 
 /**
  * Created by evacchi on 02/12/14.
  */
 public class DefaultFilterConverter implements FilterConverter {
 
-    @Override
     public Criteria convert(Container.Filter f) {
         return convert(f, false);
     }
 
-    @Override
     public Criteria convertNegated(Container.Filter filter) {
         return convert(filter, true);
     }
 
-    @Override
     public List<Criteria> convertAll(Collection<Container.Filter> fs) {
         List<Criteria> cs = new ArrayList<Criteria>();
-        for (Container.Filter f: fs)
+        for (Container.Filter f : fs)
             cs.add(convert(f));
         return cs;
     }
@@ -36,24 +39,17 @@ public class DefaultFilterConverter implements FilterConverter {
     public Criteria convert(Container.Filter f, boolean negated) {
         if (f instanceof IsNull) {
             return convertIsNullFilter((IsNull) f);
-        } else
-        if (f instanceof SimpleStringFilter) {
+        } else if (f instanceof SimpleStringFilter) {
             return convertSimpleStringFilter(((SimpleStringFilter) f));
-        } else
-        if (f instanceof Compare) {
+        } else if (f instanceof Compare) {
             return convertCompareFilter((Compare) f);
-        } else
-        if (f instanceof Not) {
+        } else if (f instanceof Not) {
             return convertNegated(((Not) f).getFilter());
-        } else
-        if (f instanceof And) {
+        } else if (f instanceof And) {
             return convertAndFilter((And) f, negated);
-        } else
-        if (f instanceof Or) {
-            return convertOrFilter((Or) f, negated);
-        }
+        } else if (f instanceof Or) { return convertOrFilter((Or) f, negated); }
 
-        throw new UnsupportedFilterException("Unsupported Filter "+f);
+        throw new UnsupportedFilterException("Unsupported Filter " + f);
     }
 
     private Criteria convertCompareFilter(Compare f) {
@@ -71,7 +67,8 @@ public class DefaultFilterConverter implements FilterConverter {
             case LESS_OR_EQUAL:
                 return c.lte(ff.getValue());
             default:
-                throw new IllegalArgumentException("Unknown comparison operator: "+ ff.getOperation());
+                throw new IllegalArgumentException(
+                        "Unknown comparison operator: " + ff.getOperation());
         }
     }
 
@@ -81,12 +78,10 @@ public class DefaultFilterConverter implements FilterConverter {
 
     private Criteria convertOrFilter(Or f, boolean negated) {
         Collection<Container.Filter> filterList = f.getFilters();
-        if (filterList.isEmpty()) {
-            throw new IllegalStateException("filter list in Or is empty");
-        }
-        if (filterList.size() == 1) {
-            return convert(filterList.iterator().next());
-        }
+        if (filterList.isEmpty()) { throw new IllegalStateException(
+                "filter list in Or is empty"); }
+        if (filterList.size() == 1) { return convert(filterList.iterator()
+                .next()); }
         List<Criteria> cs = convertAll(filterList);
         if (negated) {
             return new Criteria().norOperator(cs.toArray(new Criteria[0]));
@@ -97,16 +92,14 @@ public class DefaultFilterConverter implements FilterConverter {
 
     private Criteria convertAndFilter(And f, boolean negated) {
         if (negated)
-            throw new UnsupportedFilterException("Not(And) not supported in " +
-                    "mongo");
+            throw new UnsupportedFilterException("Not(And) not supported in "
+                    + "mongo");
 
         Collection<Container.Filter> filterList = f.getFilters();
-        if (filterList.isEmpty()) {
-            throw new IllegalStateException("filter list in And is empty");
-        }
-        if (filterList.size() == 1) {
-            return convert(filterList.iterator().next());
-        }
+        if (filterList.isEmpty()) { throw new IllegalStateException(
+                "filter list in And is empty"); }
+        if (filterList.size() == 1) { return convert(filterList.iterator()
+                .next()); }
         List<Criteria> cs = convertAll(filterList);
         return new Criteria().andOperator(cs.toArray(new Criteria[0]));
     }
@@ -126,7 +119,5 @@ public class DefaultFilterConverter implements FilterConverter {
             return c.regex(filterString);
         }
     }
-
-
 
 }

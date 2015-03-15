@@ -17,17 +17,15 @@
  *  limitations under the License.
  */
 
- package org.tylproject.vaadin.addon.beanfactory;
+package org.tylproject.vaadin.addon.beanfactory;
 
 import org.bson.types.ObjectId;
-
-import java.lang.reflect.Field;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * A factory for beans
  *
- * @param <T> the type of the bean
+ * @param <T>
+ *            the type of the bean
  */
 public interface BeanFactory<T> {
 
@@ -37,8 +35,7 @@ public interface BeanFactory<T> {
     ObjectId injectId(T target);
 
     /**
-     * instantiates and returns a bean of the given
-     * type parameter
+     * instantiates and returns a bean of the given type parameter
      */
     T newInstance();
 

@@ -17,7 +17,33 @@
  *  limitations under the License.
  */
 
- package org.tylproject.vaadin.addon;
+package org.tylproject.vaadin.addon;
+
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
+import java.beans.PropertyDescriptor;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
+import org.bson.types.ObjectId;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.tylproject.vaadin.addon.beanfactory.BeanFactory;
+import org.tylproject.vaadin.addon.beanfactory.DefaultBeanFactory;
+import org.tylproject.vaadin.addon.utils.DefaultFilterConverter;
+import org.tylproject.vaadin.addon.utils.FilterConverter;
+import org.tylproject.vaadin.addon.utils.Page;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
@@ -29,68 +55,48 @@ import com.vaadin.data.Property;
 import com.vaadin.data.util.AbstractContainer;
 import com.vaadin.data.util.BeanItem;
 import com.vaadin.data.util.filter.UnsupportedFilterException;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Sort;
-import org.tylproject.vaadin.addon.beanfactory.BeanFactory;
-import org.tylproject.vaadin.addon.beanfactory.DefaultBeanFactory;
-import org.tylproject.vaadin.addon.utils.DefaultFilterConverter;
-import org.tylproject.vaadin.addon.utils.FilterConverter;
-import org.tylproject.vaadin.addon.utils.Page;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.core.MongoOperations;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.beans.*;
-import java.util.*;
-import java.util.logging.Logger;
-
-import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 /**
  * Simple (non-buffered) Mongo Container
  *
- * Every change to this container will be immediately reflected in the DB.
- * An instance of this container can be obtained through the fluent
+ * Every change to this container will be immediately reflected in the DB. An
+ * instance of this container can be obtained through the fluent
  * {@link org.tylproject.vaadin.addon.MongoContainer.Builder}
  *
  * This container is Ordered but not {@link com.vaadin.data.Container.Sortable},
- * because it is not possible to sort it on the fly. You can always
- * build a container for a sorted query using the Builder method
- * {@link org.tylproject.vaadin.addon.MongoContainer.Builder#sortedBy(org.springframework.data.domain.Sort)}.
+ * because it is not possible to sort it on the fly. You can always build a
+ * container for a sorted query using the Builder method
+ * {@link org.tylproject.vaadin.addon.MongoContainer.Builder#sortedBy(org.springframework.data.domain.Sort)}
+ * .
  *
- * Please notice that it is not possible to {@link #addItem()}
- * or {@link #addItem(Object)}, because it would not be possible to satisfy
- * the contract of the method. The itemId should be a temporary handle,
- * but this container immediately reflects changes onto the DB,
- * so this would result in an empty entity on the DB.
+ * Please notice that it is not possible to {@link #addItem()} or
+ * {@link #addItem(Object)}, because it would not be possible to satisfy the
+ * contract of the method. The itemId should be a temporary handle, but this
+ * container immediately reflects changes onto the DB, so this would result in
+ * an empty entity on the DB.
  *
  *
  */
-public class MongoContainer<Bean>
-        extends AbstractContainer
-        implements Container, Container.Ordered, Container.Indexed,
-        Container.Filterable, Container.Sortable,
-        Container.ItemSetChangeNotifier {
-
-
+public class MongoContainer<Bean> extends AbstractContainer implements
+        Container, Container.Ordered, Container.Indexed, Container.Filterable,
+        Container.Sortable, Container.ItemSetChangeNotifier {
 
     /**
      * Fluent Builder for a (Buffered)MongoContainer instance.
      *
-     * Every Container includes all the properties of the given bean as a default.
-     * You can use the methods {@link org.tylproject.vaadin.addon.MongoContainer.Builder#withProperty(java.lang.String, Class)}
-     * and {@link org.tylproject.vaadin.addon.MongoContainer.Builder#withNestedProperty(java.lang.String, Class)}
+     * Every Container includes all the properties of the given bean as a
+     * default. You can use the methods
+     * {@link org.tylproject.vaadin.addon.MongoContainer.Builder#withProperty(java.lang.String, Class)}
+     * and
+     * {@link org.tylproject.vaadin.addon.MongoContainer.Builder#withNestedProperty(java.lang.String, Class)}
      * to define a custom list of properties.
      *
-     * @param <BT> Type of the entity
+     * @param <BT>
+     *            Type of the entity
      */
     public static class Builder<BT> {
 
         private final static int DEFAULT_PAGE_SIZE = 100;
-
 
         private final MongoOperations mongoOps;
         private Criteria mongoCriteria = new Criteria();
@@ -102,25 +108,29 @@ public class MongoContainer<Bean>
 
         private boolean hasCustomPropertyList = false;
         private boolean hasNestedPropertyList = false;
-        private BeanFactory<BT> beanFactory ;
+        private BeanFactory<BT> beanFactory;
         private FilterConverter filterConverter = new DefaultFilterConverter();
         public String parentProperty;
 
         /**
          * Initializes and return a builder for a MongoContainer
          *
-         * @param beanClass class of the entity
-         * @param mongoOps mongoOperation instance
-         * @param <T> type of the entity
-         * @return the builder instance for the given entity,
-         *         using the given MongoOperations instance
+         * @param beanClass
+         *            class of the entity
+         * @param mongoOps
+         *            mongoOperation instance
+         * @param <T>
+         *            type of the entity
+         * @return the builder instance for the given entity, using the given
+         *         MongoOperations instance
          */
         public static <T> MongoContainer.Builder<T> forEntity(
                 final Class<T> beanClass, final MongoOperations mongoOps) {
             return new MongoContainer.Builder<T>(beanClass, mongoOps);
         }
 
-        private Builder(final Class<BT> beanClass, final MongoOperations mongoOps) {
+        private Builder(final Class<BT> beanClass,
+                final MongoOperations mongoOps) {
             this.mongoOps = mongoOps;
             this.beanClass = beanClass;
             this.beanFactory = new DefaultBeanFactory<BT>(beanClass);
@@ -132,18 +142,20 @@ public class MongoContainer<Bean>
         }
 
         /**
-         * @param mongoCriteria A {@link org.springframework.data.mongodb.core.query.Criteria}
-         *                      object created through Spring's
-         *                      fluent interface
+         * @param mongoCriteria
+         *            A
+         *            {@link org.springframework.data.mongodb.core.query.Criteria}
+         *            object created through Spring's fluent interface
          */
         public Builder<BT> forCriteria(final Criteria mongoCriteria) {
             this.mongoCriteria = mongoCriteria;
             return this;
         }
 
-
         /**
-         * @param sort A Spring {@link org.springframework.data.domain.Sort} object
+         * @param sort
+         *            A Spring {@link org.springframework.data.domain.Sort}
+         *            object
          */
         public Builder<BT> sortedBy(final Sort sort) {
             this.sort = sort;
@@ -166,6 +178,7 @@ public class MongoContainer<Bean>
             simpleProperties.put(id, type);
             return this;
         }
+
         /**
          * adds a property with the given property id and of the given type
          */
@@ -176,16 +189,18 @@ public class MongoContainer<Bean>
         /**
          * adds a nested property of the given type.
          *
-         * A  <em>nested</em> property for a bean is a property that can be reached
-         * through a <i>path</i> like <code>path.to.property</code>.
+         * A <em>nested</em> property for a bean is a property that can be
+         * reached through a <i>path</i> like <code>path.to.property</code>.
          *
-         * e.g., suppose you have a bean Person, with a property "address"
-         * of type Address; suppose that Address has a property "street".
-         * In code you can write <code>myPerson.getAddress().getStreet()</code>.
+         * e.g., suppose you have a bean Person, with a property "address" of
+         * type Address; suppose that Address has a property "street". In code
+         * you can write <code>myPerson.getAddress().getStreet()</code>.
          *
-         * You can access such nested properties in the container using the syntax:
+         * You can access such nested properties in the container using the
+         * syntax:
+         * 
          * <pre>
-         *     builder.withNestedProperty("address.street");
+         * builder.withNestedProperty(&quot;address.street&quot;);
          * </pre>
          *
          */
@@ -195,11 +210,11 @@ public class MongoContainer<Bean>
             return this;
         }
 
-        public Builder<BT> withFilterConverter(FilterConverter customFilterConverter) {
+        public Builder<BT> withFilterConverter(
+                FilterConverter customFilterConverter) {
             this.filterConverter = customFilterConverter;
             return this;
         }
-
 
         /**
          * @return a simple MongoContainer instance
@@ -214,14 +229,16 @@ public class MongoContainer<Bean>
          * @return a BufferedMongoContainer instance
          */
         public BufferedMongoContainer<BT> buildBuffered() {
-            final BufferedMongoContainer<BT> mc = new BufferedMongoContainer<BT>(this);
+            final BufferedMongoContainer<BT> mc = new BufferedMongoContainer<BT>(
+                    this);
             mc.fetchPage(0, pageSize);
             return mc;
         }
 
         public HierarchicalMongoContainer<BT> buildHierarchical(String id) {
             this.parentProperty = id;
-            final HierarchicalMongoContainer<BT> mc = new HierarchicalMongoContainer<BT>(this);
+            final HierarchicalMongoContainer<BT> mc = new HierarchicalMongoContainer<BT>(
+                    this);
             mc.fetchPage(0, pageSize);
             return mc;
         }
@@ -230,14 +247,14 @@ public class MongoContainer<Bean>
     protected static final String ID = "_id";
     protected static final Logger log = Logger.getLogger("MongoContainer");
 
-
-    @Nonnull protected Page<ObjectId> page;
+    @Nonnull
+    protected Page<ObjectId> page;
     protected final int pageSize;
-
 
     protected final Criteria criteria;
     /**
-     * criteria updated by {@link #addContainerFilter(com.vaadin.data.Container.Filter)}
+     * criteria updated by
+     * {@link #addContainerFilter(com.vaadin.data.Container.Filter)}
      */
     protected Query query;
     protected final Query baseQuery;
@@ -252,11 +269,10 @@ public class MongoContainer<Bean>
     protected final Class<Bean> beanClass;
     protected final BeanFactory<Bean> beanFactory;
 
-    protected final Map<String, Class<?>> simpleProperties ;
-    protected final Map<String, Class<?>> nestedProperties ;
+    protected final Map<String, Class<?>> simpleProperties;
+    protected final Map<String, Class<?>> nestedProperties;
 
     protected final List<Object> allProperties;
-
 
     MongoContainer(Builder<Bean> bldr) {
         this.criteria = bldr.mongoCriteria;
@@ -265,30 +281,30 @@ public class MongoContainer<Bean>
         this.baseQuery = Query.query(criteria).with(baseSort);
         resetQuery();
 
-
-
         this.mongoOps = bldr.mongoOps;
 
         this.beanClass = bldr.beanClass;
         this.beanFactory = bldr.beanFactory;
 
         if (bldr.hasCustomPropertyList) {
-            this.simpleProperties = Collections.unmodifiableMap(bldr.simpleProperties);
+            this.simpleProperties = Collections
+                    .unmodifiableMap(bldr.simpleProperties);
         } else {
             // otherwise, get them via reflection
             this.simpleProperties = new LinkedHashMap<String, Class<?>>();
-            PropertyDescriptor[] descriptors = BeanUtils.getPropertyDescriptors(beanClass);
-            for (PropertyDescriptor d: descriptors) {
+            PropertyDescriptor[] descriptors = BeanUtils
+                    .getPropertyDescriptors(beanClass);
+            for (PropertyDescriptor d : descriptors) {
                 this.simpleProperties.put(d.getName(), d.getPropertyType());
             }
         }
 
         if (bldr.hasNestedPropertyList) {
-            this.nestedProperties = Collections.unmodifiableMap(bldr.nestedProperties);
+            this.nestedProperties = Collections
+                    .unmodifiableMap(bldr.nestedProperties);
         } else {
             nestedProperties = Collections.emptyMap();
         }
-
 
         List<Object> allProps = new ArrayList<Object>(simpleProperties.keySet());
 
@@ -338,8 +354,10 @@ public class MongoContainer<Bean>
     /**
      * returns a cursor in the given range.
      *
-     * shorthand for <pre>
-     *      cursor().skip(skip).limit(limit);
+     * shorthand for
+     * 
+     * <pre>
+     * cursor().skip(skip).limit(limit);
      * </pre>
      */
     protected DBCursor cursorInRange(int skip, int limit) {
@@ -347,8 +365,8 @@ public class MongoContainer<Bean>
     }
 
     /**
-     * fetches a {@link org.tylproject.vaadin.addon.utils.Page}
-     * within the given range
+     * fetches a {@link org.tylproject.vaadin.addon.utils.Page} within the given
+     * range
      *
      */
     protected void fetchPage(int offset, int pageSize) {
@@ -356,7 +374,8 @@ public class MongoContainer<Bean>
         // TODO: keep cursor around to possibly reuse
         DBCursor cursor = cursorInRange(offset, pageSize);
 
-        Page<ObjectId> newPage = new Page<ObjectId>(pageSize, offset, this.size());
+        Page<ObjectId> newPage = new Page<ObjectId>(pageSize, offset,
+                this.size());
 
         for (int i = offset; cursor.hasNext(); i++)
             newPage.set(i, (ObjectId) cursor.next().get(ID));
@@ -368,12 +387,14 @@ public class MongoContainer<Bean>
      * returns the current page and refreshes it when invalid
      */
     protected Page<ObjectId> page() {
-        if (!page.isValid()) fetchPage(page.offset, page.pageSize);
+        if (!page.isValid())
+            fetchPage(page.offset, page.pageSize);
         return page;
     }
 
     public BeanItem<Bean> getItem(Object o) {
-        if (o == null) return null;
+        if (o == null)
+            return null;
         assertIdValid(o);
         final Bean document = mongoOps.findById(o, beanClass);
         // document was not found in the actual DB
@@ -386,53 +407,54 @@ public class MongoContainer<Bean>
     }
 
     protected BeanItem<Bean> makeBeanItem(Bean document) {
-        if (document == null) return null;
+        if (document == null)
+            return null;
 
-        final BeanItem<Bean> beanItem = new BeanItem<Bean>(document, this.simpleProperties.keySet());
-        for (String nestedPropId: nestedProperties.keySet()) {
+        final BeanItem<Bean> beanItem = new BeanItem<Bean>(document,
+                this.simpleProperties.keySet());
+        for (String nestedPropId : nestedProperties.keySet()) {
             beanItem.addNestedProperty(nestedPropId);
         }
         return beanItem;
     }
 
-    @Override
     public Collection<?> getContainerPropertyIds() {
         return this.allProperties;
     }
 
     // method is basically deprecated
-    @Override
     @Deprecated
     public List<ObjectId> getItemIds() {
         log.info("this expensive operation should be avoided");
         return getItemIds(0, this.size());
     }
 
-    @Override
     public Property<?> getContainerProperty(Object itemId, Object propertyId) {
         BeanItem<Bean> item = getItem(itemId);
-        if (item == null) return null;
+        if (item == null)
+            return null;
 
         return item.getItemProperty(propertyId);
     }
 
     // return the data type of the given property id
-    @Override
     public Class<?> getType(Object propertyId) {
-        if (simpleProperties.containsKey(propertyId)) return simpleProperties.get(propertyId);
-        else if (nestedProperties.containsKey(propertyId)) return nestedProperties.get(propertyId);
+        if (simpleProperties.containsKey(propertyId))
+            return simpleProperties.get(propertyId);
+        else if (nestedProperties.containsKey(propertyId))
+            return nestedProperties.get(propertyId);
 
-        throw new IllegalArgumentException("Cannot find the given propertyId: " + propertyId);
+        throw new IllegalArgumentException("Cannot find the given propertyId: "
+                + propertyId);
     }
 
-    @Override
     public int size() {
         return (int) mongoOps.count(query, beanClass);
     }
 
-    @Override
     public boolean containsId(Object itemId) {
-        if (itemId == null) return false;
+        if (itemId == null)
+            return false;
         assertIdValid(itemId);
         Query q = makeBaseQuery().addCriteria(where(ID).is(itemId));
         return mongoOps.exists(q, beanClass);
@@ -441,8 +463,8 @@ public class MongoContainer<Bean>
     /**
      * @throws UnsupportedOperationException
      */
-    @Override
-    public BeanItem<Bean> addItem(Object itemId) throws UnsupportedOperationException {
+    public BeanItem<Bean> addItem(Object itemId)
+            throws UnsupportedOperationException {
         throw new UnsupportedOperationException(
                 "cannot addItem(); insert() into mongo or build a buffered container");
     }
@@ -450,7 +472,6 @@ public class MongoContainer<Bean>
     /**
      * @throws UnsupportedOperationException
      */
-    @Override
     public ObjectId addItem() throws UnsupportedOperationException {
         throw new UnsupportedOperationException(
                 "cannot addItem(); insert() into mongo or build a buffered container");
@@ -466,8 +487,8 @@ public class MongoContainer<Bean>
         return this.beanFactory.getId(target);
     }
 
-    @Override
-    public boolean removeItem(Object itemId) throws UnsupportedOperationException {
+    public boolean removeItem(Object itemId)
+            throws UnsupportedOperationException {
         Query q = makeBaseQuery().addCriteria(where(ID).is(itemId));
         mongoOps.findAndRemove(q, beanClass);
         refresh();
@@ -475,17 +496,17 @@ public class MongoContainer<Bean>
         return true;
     }
 
-    @Override
-    public boolean addContainerProperty(Object o, Class<?> aClass, Object o2) throws UnsupportedOperationException {
-        throw new UnsupportedOperationException("cannot add container property dynamically; use Builder");
+    public boolean addContainerProperty(Object o, Class<?> aClass, Object o2)
+            throws UnsupportedOperationException {
+        throw new UnsupportedOperationException(
+                "cannot add container property dynamically; use Builder");
     }
 
-    @Override
-    public boolean removeContainerProperty(Object o) throws UnsupportedOperationException {
+    public boolean removeContainerProperty(Object o)
+            throws UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
-    @Override
     public boolean removeAllItems() throws UnsupportedOperationException {
         mongoOps.remove(this.query, beanClass);
         refresh();
@@ -493,16 +514,17 @@ public class MongoContainer<Bean>
         return true;
     }
 
-    @Override
     public int indexOfId(Object itemId) {
-        if (itemId == null) return -1;
+        if (itemId == null)
+            return -1;
 
         ObjectId oid = assertIdValid(itemId);
 
         // for the principle of locality,
         // let us optimistically first check within the page
         int index = page().indexOf(oid);
-        if (index > -1) return index;
+        if (index > -1)
+            return index;
 
         // otherwise, linearly scan the entire collection using a cursor
         // and only fetch the ids
@@ -513,28 +535,30 @@ public class MongoContainer<Bean>
             if (i >= page.offset && i < page.maxIndex) {
                 continue;
             }
-            if (value.get(ID).equals(itemId)) return i;
+            if (value.get(ID).equals(itemId))
+                return i;
         }
         return -1;
     }
 
-    @Override
     @Nullable
     public ObjectId getIdByIndex(int index) {
-        if (index < 0 || size() == 0) return null;
+        if (index < 0 || size() == 0)
+            return null;
         DBCursor cur = cursorInRange(index, 1);
-        return cur.hasNext()?
-                (ObjectId)cur.next().get(ID)
-                : null;
+        return cur.hasNext() ? (ObjectId) cur.next().get(ID) : null;
     }
 
-    @Override
     public List<ObjectId> getItemIds(int startIndex, int numberOfItems) {
-        //List<BeanId> beans = mongoOps.find(Query.query(criteria).skip(startIndex).limit(numberOfItems), BeanId.class);
-        //List<ObjectId> ids = new PropertyList<ObjectId,BeanId>(beans, beanIdDescriptor, "_id");
+        // List<BeanId> beans =
+        // mongoOps.find(Query.query(criteria).skip(startIndex).limit(numberOfItems),
+        // BeanId.class);
+        // List<ObjectId> ids = new PropertyList<ObjectId,BeanId>(beans,
+        // beanIdDescriptor, "_id");
         log.info(String.format("range: [%d,%d]", startIndex, numberOfItems));
-        if (page.isValid() && page.isWithinRange(startIndex, numberOfItems)) {
-            return page.subList(startIndex, numberOfItems); // return the requested range
+        if (page.isValid() && page.isWithinRange(startIndex, numberOfItems)) { return page
+                .subList(startIndex, numberOfItems); // return the requested
+                                                     // range
         }
 
         fetchPage(startIndex, numberOfItems);
@@ -542,62 +566,56 @@ public class MongoContainer<Bean>
         return this.page.toImmutableList();
     }
 
-    @Override
     public Object addItemAt(int index) throws UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public Item addItemAt(int index, Object newItemId) throws UnsupportedOperationException {
+    public Item addItemAt(int index, Object newItemId)
+            throws UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
-    @Override
     public ObjectId nextItemId(Object itemId) {
         int index = indexOfId(itemId);
-        return getIdByIndex(index+1);
+        return getIdByIndex(index + 1);
     }
 
-    @Override
     public ObjectId prevItemId(Object itemId) {
         int index = indexOfId(itemId);
         return getIdByIndex(index - 1);
     }
 
-    @Override
     public ObjectId firstItemId() {
         return getIdByIndex(0);
     }
 
-    @Override
     public ObjectId lastItemId() {
-        return size() > 0 ?
-                 getIdByIndex(size()-1)
-               : null;
+        return size() > 0 ? getIdByIndex(size() - 1) : null;
     }
-    @Override
+
     public boolean isFirstId(Object itemId) {
-        if (itemId == null) return false;
+        if (itemId == null)
+            return false;
 
         assertIdValid(itemId);
         return itemId.equals(firstItemId());
     }
 
-    @Override
     public boolean isLastId(Object itemId) {
-        if (itemId == null) return false;
+        if (itemId == null)
+            return false;
 
         assertIdValid(itemId);
         return itemId.equals(lastItemId());
     }
 
-    @Override
-    public Object addItemAfter(Object previousItemId) throws UnsupportedOperationException {
+    public Object addItemAfter(Object previousItemId)
+            throws UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public Item addItemAfter(Object previousItemId, Object newItemId) throws UnsupportedOperationException {
+    public Item addItemAfter(Object previousItemId, Object newItemId)
+            throws UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
@@ -607,6 +625,7 @@ public class MongoContainer<Bean>
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void addListener(ItemSetChangeListener listener) {
         super.addListener(listener);
     }
@@ -617,6 +636,7 @@ public class MongoContainer<Bean>
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void removeListener(ItemSetChangeListener listener) {
         super.removeListener(listener);
     }
@@ -642,23 +662,26 @@ public class MongoContainer<Bean>
     /**
      * Verifies that the given Object instance is a valid itemId
      *
-     * Note: This should generally be done through type-checking of the parameter
-     * but this is not possible because of Vaadin's interfaces
+     * Note: This should generally be done through type-checking of the
+     * parameter but this is not possible because of Vaadin's interfaces
      *
-     * @throws java.lang.NullPointerException if the parameter is null
-     * @throws java.lang.IllegalArgumentException if the parameter is not an ObjectId
+     * @throws java.lang.NullPointerException
+     *             if the parameter is null
+     * @throws java.lang.IllegalArgumentException
+     *             if the parameter is not an ObjectId
      */
     protected ObjectId assertIdValid(Object o) {
-        if ( o == null )
+        if (o == null)
             throw new NullPointerException("Id cannot be null");
-        if ( ! ( o instanceof ObjectId ) )
-            throw new IllegalArgumentException("Id is not instance of ObjectId: "+o);
+        if (!(o instanceof ObjectId))
+            throw new IllegalArgumentException(
+                    "Id is not instance of ObjectId: " + o);
 
         return (ObjectId) o;
     }
 
-    @Override
-    public void addContainerFilter(Filter filter) throws UnsupportedFilterException {
+    public void addContainerFilter(Filter filter)
+            throws UnsupportedFilterException {
         Criteria c = filterConverter.convert(filter);
         if (this.query.getQueryObject().toMap().isEmpty()) {
             this.query = new Query(c);
@@ -672,10 +695,10 @@ public class MongoContainer<Bean>
     }
 
     public void addAllContainerFilters(Collection<? extends Filter> filters) {
-        for (Filter f : filters) this.addContainerFilter(f);
+        for (Filter f : filters)
+            this.addContainerFilter(f);
     }
 
-    @Override
     public void removeContainerFilter(Filter filter) {
         appliedFilters.remove(filter);
         List<Filter> backupFilters = new ArrayList<Filter>(appliedFilters);
@@ -689,7 +712,6 @@ public class MongoContainer<Bean>
         fireItemSetChange();
     }
 
-    @Override
     public void removeAllContainerFilters() {
         doRemoveAllContainerFilters();
         fireItemSetChange();
@@ -708,36 +730,28 @@ public class MongoContainer<Bean>
         this.sort = null;
     }
 
-
-
-    @Override
     public Collection<Filter> getContainerFilters() {
-        return Collections.unmodifiableList(new ArrayList<Filter>(appliedFilters));
+        return Collections.unmodifiableList(new ArrayList<Filter>(
+                appliedFilters));
     }
 
-
-    @Override
     public void sort(Object[] propertyId, boolean[] ascending) {
         if (propertyId.length != ascending.length)
-            throw new IllegalArgumentException(
-                    String.format(
-                    "propertyId array length does not match" +
-                            "ascending array length (%d!=%d)",
-                            propertyId.length,
-                            ascending.length));
+            throw new IllegalArgumentException(String.format(
+                    "propertyId array length does not match"
+                            + "ascending array length (%d!=%d)",
+                    propertyId.length, ascending.length));
 
         Sort result = null;
 
         // if the arrays are empty, will just the conditions
 
         if (propertyId.length != 0) {
-            result = new Sort(
-                    ascending[0] ? Sort.Direction.ASC : Sort.Direction.DESC,
-                    propertyId[0].toString());
+            result = new Sort(ascending[0] ? Sort.Direction.ASC
+                    : Sort.Direction.DESC, propertyId[0].toString());
             for (int i = 1; i < propertyId.length; i++) {
-                result = result.and(new Sort(
-                        ascending[i] ? Sort.Direction.ASC : Sort.Direction.DESC,
-                        propertyId[i].toString()));
+                result = result.and(new Sort(ascending[i] ? Sort.Direction.ASC
+                        : Sort.Direction.DESC, propertyId[i].toString()));
             }
         }
 
@@ -757,13 +771,13 @@ public class MongoContainer<Bean>
         q.with(s);
         return q;
     }
+
     protected Query applyCriteriaList(Query q, List<Criteria> criteriaList) {
-        for (Criteria c: criteriaList)
+        for (Criteria c : criteriaList)
             q.addCriteria(c);
         return q;
     }
 
-    @Override
     public Collection<?> getSortableContainerPropertyIds() {
         return getContainerPropertyIds();
     }

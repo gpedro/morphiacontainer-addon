@@ -17,10 +17,14 @@
  *  limitations under the License.
  */
 
- package org.tylproject.vaadin.addon.utils;
+package org.tylproject.vaadin.addon.utils;
 
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Represents a cached page of the database in memory
@@ -35,12 +39,13 @@ public class Page<T> {
     private boolean valid;
     private T[] values;
 
+    @SuppressWarnings("unchecked")
     public Page(int pageSize, int offset, int collectionSize) {
         this.pageSize = pageSize;
         this.offset = offset;
         this.size = collectionSize;
         this.valid = true;
-        this.maxIndex = offset+pageSize;
+        this.maxIndex = offset + pageSize;
         this.maxValidIndex = 0;
         this.values = (T[]) new Object[pageSize];
         Arrays.fill(values, null);
@@ -49,15 +54,15 @@ public class Page<T> {
     /**
      *
      * @throws java.lang.ArrayIndexOutOfBoundsException
-     *         unless offset <= index <= maxIndex
+     *             unless offset <= index <= maxIndex
      */
     public void set(int index, T value) {
         if (index < offset)
-            throw new ArrayIndexOutOfBoundsException(index+"<"+ offset);
+            throw new ArrayIndexOutOfBoundsException(index + "<" + offset);
         if (index > this.maxIndex)
-            throw new ArrayIndexOutOfBoundsException(index+">"+ maxIndex);
+            throw new ArrayIndexOutOfBoundsException(index + ">" + maxIndex);
 
-        int actualIndex = index-offset;
+        int actualIndex = index - offset;
         this.values[actualIndex] = value;
         this.valueSet.add(value);
 
@@ -67,24 +72,20 @@ public class Page<T> {
     }
 
     public T get(int index) {
-        if (index < offset || index > offset+pageSize)
-            throw new IndexOutOfBoundsException(
-                    MessageFormat.format(
-                            "index {} not within bounds [{},{}]",
-                            offset, size));
+        if (index < offset || index > offset + pageSize)
+            throw new IndexOutOfBoundsException(MessageFormat.format(
+                    "index {} not within bounds [{},{}]", offset, size));
 
-        return this.values[index-offset];
+        return this.values[index - offset];
     }
 
     /**
-     * @return the index of the given value, or -1 if the value
-     *          is not on this page
+     * @return the index of the given value, or -1 if the value is not on this
+     *         page
      */
     public int indexOf(T value) {
         for (int i = 0; i < values.length; ++i) {
-            if (value.equals(values[i])) {
-                return i + offset;
-            }
+            if (value.equals(values[i])) { return i + offset; }
         }
         return -1;
     }
@@ -97,10 +98,9 @@ public class Page<T> {
         return pageSize;
     }
 
-
-
     public List<T> toImmutableList() {
-        return Collections.unmodifiableList(Arrays.asList(values).subList(0, maxValidIndex-offset+1));
+        return Collections.unmodifiableList(Arrays.asList(values).subList(0,
+                maxValidIndex - offset + 1));
     }
 
     public void setInvalid() {
@@ -112,18 +112,17 @@ public class Page<T> {
     }
 
     /**
-     * checks whether the given range of values
-     * is within the range of values that this page holds.
+     * checks whether the given range of values is within the range of values
+     * that this page holds.
      *
-     * e.g., if the page holds value within [0,100]
-     *      and startIndex == 10 && numberOfItems == 5
-     *      then the method returns true, because [10,15] is
-     *      included in [0,100]
+     * e.g., if the page holds value within [0,100] and startIndex == 10 &&
+     * numberOfItems == 5 then the method returns true, because [10,15] is
+     * included in [0,100]
      *
      */
     public boolean isWithinRange(int startIndex, int numberOfItems) {
         return startIndex >= this.offset
-                //&& numberOfItems <= this.pageSize
+        // && numberOfItems <= this.pageSize
                 && startIndex + numberOfItems <= this.maxValidIndex;
     }
 
@@ -131,8 +130,10 @@ public class Page<T> {
      * retuns an immutable sublist of the given subrange
      */
     public List<T> subList(int startIndex, int numberOfItems) {
-        List<T> idList = this.toImmutableList(); // indexed from 0, as required by the interface contract
-        return idList.subList(startIndex-offset, Math.min(startIndex-offset+numberOfItems, maxValidIndex));
+        List<T> idList = this.toImmutableList(); // indexed from 0, as required
+                                                 // by the interface contract
+        return idList.subList(startIndex - offset,
+                Math.min(startIndex - offset + numberOfItems, maxValidIndex));
     }
 
 }

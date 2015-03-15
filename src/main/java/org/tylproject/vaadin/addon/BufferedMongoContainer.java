@@ -19,28 +19,31 @@
 
 package org.tylproject.vaadin.addon;
 
-import com.mongodb.DBCursor;
-import com.vaadin.data.Buffered;
-import com.vaadin.data.util.BeanItem;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.TreeSet;
+
+import javax.annotation.Nullable;
+
 import org.bson.types.ObjectId;
 import org.tylproject.vaadin.addon.utils.Page;
 
-import javax.annotation.Nullable;
-import java.util.*;
+import com.mongodb.DBCursor;
+import com.vaadin.data.Buffered;
+import com.vaadin.data.util.BeanItem;
 
 public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
-    implements Buffered {
+        implements Buffered {
 
-    private final LinkedHashMap<ObjectId,BeanItem<Bean>> newItems = new LinkedHashMap<ObjectId, BeanItem<Bean>>();
-    private final LinkedHashMap<ObjectId,BeanItem<Bean>> updatedItems = new LinkedHashMap<ObjectId, BeanItem<Bean>>();
-    private final LinkedHashMap<ObjectId,BeanItem<Bean>> removedItems = new LinkedHashMap<ObjectId, BeanItem<Bean>>();
+    private final LinkedHashMap<ObjectId, BeanItem<Bean>> newItems = new LinkedHashMap<ObjectId, BeanItem<Bean>>();
+    private final LinkedHashMap<ObjectId, BeanItem<Bean>> updatedItems = new LinkedHashMap<ObjectId, BeanItem<Bean>>();
+    private final LinkedHashMap<ObjectId, BeanItem<Bean>> removedItems = new LinkedHashMap<ObjectId, BeanItem<Bean>>();
     private final TreeSet<Integer> removedItemsIndices = new TreeSet<Integer>();
 
     BufferedMongoContainer(Builder<Bean> bldr) {
         super(bldr);
     }
 
-    @Override
     public void commit() throws SourceException {
         try {
             commitNewItems();
@@ -53,36 +56,36 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void clearBuffers() {
-        for (LinkedHashMap<ObjectId,BeanItem<Bean>> temporaryStorage:
-                Arrays.asList(newItems, updatedItems, removedItems)) {
+        for (LinkedHashMap<ObjectId, BeanItem<Bean>> temporaryStorage : Arrays
+                .asList(newItems, updatedItems, removedItems)) {
             temporaryStorage.clear();
         }
         removedItemsIndices.clear();
     }
 
     private void commitRemovedItems() {
-        for (ObjectId key: removedItems.keySet()) {
-            Bean bean =  removedItems.get(key).getBean();
+        for (ObjectId key : removedItems.keySet()) {
+            Bean bean = removedItems.get(key).getBean();
             mongoOps.remove(bean);
         }
     }
 
     private void commitUpdatedItems() {
-        for (ObjectId key: updatedItems.keySet()) {
+        for (ObjectId key : updatedItems.keySet()) {
             Bean bean = updatedItems.get(key).getBean();
             mongoOps.save(bean);
         }
     }
 
     private void commitNewItems() {
-        for (ObjectId key: newItems.keySet()) {
+        for (ObjectId key : newItems.keySet()) {
             Bean bean = newItems.get(key).getBean();
             mongoOps.insert(bean);
         }
     }
 
-    @Override
     public void discard() throws SourceException {
         try {
             discardNewItems();
@@ -107,37 +110,36 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
         updatedItems.clear();
     }
 
-    @Override
     public void setBuffered(boolean buffered) {
         throw new UnsupportedOperationException(
                 "A BufferedMongoContainer is always buffered");
     }
 
-    @Override
-    public boolean isBuffered() { return true; }
-
-    @Override
-    public boolean isModified() {
-        return !newItems.isEmpty()
-               || !updatedItems.isEmpty()
-               || !removedItems.isEmpty();
+    public boolean isBuffered() {
+        return true;
     }
 
-    @Override
+    public boolean isModified() {
+        return !newItems.isEmpty() || !updatedItems.isEmpty()
+                || !removedItems.isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
     public BeanItem<Bean> getItem(Object itemId) {
         ObjectId id = assertIdValid(itemId);
 
         // if the internal buffers are not empty,
         // first check there
         if (this.isModified()) {
-            for (LinkedHashMap<ObjectId, BeanItem<Bean>> temporaryStorage :
-                    Arrays.asList(newItems, updatedItems)) {
+            for (LinkedHashMap<ObjectId, BeanItem<Bean>> temporaryStorage : Arrays
+                    .asList(newItems, updatedItems)) {
                 if (temporaryStorage.containsKey(id))
                     return temporaryStorage.get(id);
             }
             // if removed, it should return null
             // as the id would not found in the collection
-            if (removedItems.containsKey(itemId)) return null;
+            if (removedItems.containsKey(itemId))
+                return null;
         }
 
         // otherwise, just return the item with the usual strategy
@@ -147,7 +149,8 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
     @Override
     @Nullable
     public ObjectId getIdByIndex(final int index) {
-        if (index < 0 || this.size() == 0) return null;
+        if (index < 0 || this.size() == 0)
+            return null;
 
         int actualIndex = index;
 
@@ -160,14 +163,12 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
         }
 
         DBCursor cur = cursorInRange(actualIndex, 1);
-        return cur.hasNext()?
-                (ObjectId)cur.next().get(ID)
-                : null;
+        return cur.hasNext() ? (ObjectId) cur.next().get(ID) : null;
     }
 
     @Override
-    public boolean removeItem(Object itemId) throws
-            UnsupportedOperationException {
+    public boolean removeItem(Object itemId)
+            throws UnsupportedOperationException {
         if (newItems.containsKey(itemId)) {
             newItems.remove(itemId);
         } else {
@@ -186,29 +187,34 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
     public int indexOfId(Object itemId) {
         if (newItems.containsKey(itemId)) {
             int i = 0;
-            for (ObjectId newId: newItems.keySet()) {
-                if (itemId.equals(newId)) {
-                    return super.size() - removedItems.size() + i;
-                }
+            for (ObjectId newId : newItems.keySet()) {
+                if (itemId.equals(newId)) { return super.size()
+                        - removedItems.size() + i; }
                 i++;
             }
         }
-        if (removedItems.containsKey(itemId)) return -1;
+        if (removedItems.containsKey(itemId))
+            return -1;
         return super.indexOfId(itemId);
     }
 
     @Override
     public boolean containsId(Object itemId) {
-        if (removedItems.containsKey(itemId)) return false;
-        else if (newItems.containsKey(itemId)) return true;
-        else return super.containsId(itemId);
+        if (removedItems.containsKey(itemId))
+            return false;
+        else if (newItems.containsKey(itemId))
+            return true;
+        else
+            return super.containsId(itemId);
     }
 
     @Override
     public int size() {
         int actualSize = super.size();
-        if (newItems.isEmpty() && removedItems.isEmpty()) return actualSize;
-        else return actualSize + newItems.size() - removedItems.size();
+        if (newItems.isEmpty() && removedItems.isEmpty())
+            return actualSize;
+        else
+            return actualSize + newItems.size() - removedItems.size();
     }
 
     @Override
@@ -220,25 +226,28 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
         DBCursor cursor = cursorInRange(offset, pageSize + removedItems.size());
 
         // the page size does not change, though
-        Page<ObjectId> newPage = new Page<ObjectId>(pageSize, offset, this.size());
+        Page<ObjectId> newPage = new Page<ObjectId>(pageSize, offset,
+                this.size());
 
         // stop when cursor has reached the end OR index >= newPage.maxIndex,
         // whichever occurs first
         int index = offset;
-        for (   ; cursor.hasNext() && index < newPage.maxIndex; ) {
+        for (; cursor.hasNext() && index < newPage.maxIndex;) {
             ObjectId objectId = (ObjectId) cursor.next().get(ID);
             // if the element has been scheduled for removal, skip it
-            if (removedItems.containsKey(objectId)) continue;
+            if (removedItems.containsKey(objectId))
+                continue;
             newPage.set(index, objectId);
             index++;
         }
 
         // if there is still space left in the page,
         // fill it with elements from addedItems
-        if ( ( newPage.maxIndex >= super.size() - removedItems.size() )
+        if ((newPage.maxIndex >= super.size() - removedItems.size())
                 && index < newPage.maxIndex) {
-            for (ObjectId objectId: newItems.keySet()) {
-                if (index >= newPage.maxIndex) break;
+            for (ObjectId objectId : newItems.keySet()) {
+                if (index >= newPage.maxIndex)
+                    break;
                 newPage.set(index, objectId);
                 index++;
             }
@@ -251,19 +260,20 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
      * Notify the container that the given itemId will be updated
      *
      * @param itemId
-     * @throws java.lang.IllegalArgumentException if the itemId does not exist
-     *           or it has been scheduled for removal
+     * @throws java.lang.IllegalArgumentException
+     *             if the itemId does not exist or it has been scheduled for
+     *             removal
      *
      * @return the item that will be updated
      */
     public BeanItem<Bean> updateItem(ObjectId itemId) {
 
         if (this.removedItems.containsKey(itemId))
-            throw new IllegalArgumentException("item "+itemId+" was removed");
+            throw new IllegalArgumentException("item " + itemId
+                    + " was removed");
         if (!this.newItems.containsKey(itemId)) {
-            if (!this.containsId(itemId)) {
-                throw new IllegalArgumentException("item " + itemId + " was removed");
-            }
+            if (!this.containsId(itemId)) { throw new IllegalArgumentException(
+                    "item " + itemId + " was removed"); }
 
             page.setInvalid();
 
@@ -278,16 +288,17 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
     }
 
     @Override
-    public BeanItem<Bean> addItem(Object itemId) throws UnsupportedOperationException {
+    public BeanItem<Bean> addItem(Object itemId)
+            throws UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
     /**
      * Instantiate an entity automatically and return its ObjectId
      *
-     * This method tries to instantiate an entity automatically
-     * using the {@link org.tylproject.vaadin.addon.beanfactory.BeanFactory}
-     * and insert it in the pending list of added items.
+     * This method tries to instantiate an entity automatically using the
+     * {@link org.tylproject.vaadin.addon.beanfactory.BeanFactory} and insert it
+     * in the pending list of added items.
      *
      */
     @Override
@@ -300,8 +311,9 @@ public class BufferedMongoContainer<Bean> extends MongoContainer<Bean>
      */
     @Override
     public ObjectId addEntity(Bean target) {
-        BeanItem<Bean> beanItem = new BeanItem<Bean>(target, simpleProperties.keySet());
-        for (String nestedProp: this.nestedProperties.keySet())
+        BeanItem<Bean> beanItem = new BeanItem<Bean>(target,
+                simpleProperties.keySet());
+        for (String nestedProp : this.nestedProperties.keySet())
             beanItem.addNestedProperty(nestedProp);
 
         ObjectId id = beanFactory.injectId(target);
