@@ -1,6 +1,6 @@
 # Vaadin Lazy MongoContainer
 
-![travis build](https://api.travis-ci.org/tyl/mongodbcontainer-addon.svg)
+[![Build Status](https://travis-ci.org/tyl/mongodbcontainer-addon.svg?branch=master)](https://travis-ci.org/tyl/mongodbcontainer-addon)
 
 A Lazy Vaadin Container for MongoDB based on Spring Data.
 
