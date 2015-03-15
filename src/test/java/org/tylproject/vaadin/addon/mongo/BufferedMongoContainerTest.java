@@ -1,22 +1,14 @@
 package org.tylproject.vaadin.addon.mongo;
 
-import com.mongodb.MongoClient;
-import junit.framework.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+
 import org.bson.types.ObjectId;
-import org.junit.Before;
 import org.junit.Test;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.tylproject.data.mongo.Customer;
 import org.tylproject.vaadin.addon.BufferedMongoContainer;
-import org.tylproject.vaadin.addon.MongoContainer;
-
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 /**
  * Created by evacchi on 12/11/14.
@@ -25,8 +17,7 @@ public class BufferedMongoContainerTest extends BaseTest {
 
     @Test
     public void testRemoveFirstItem() {
-        final BufferedMongoContainer<Customer> mc =
-                builder().buildBuffered();
+        final BufferedMongoContainer<Customer> mc = builder().buildBuffered();
 
         int initSize = mc.size();
 

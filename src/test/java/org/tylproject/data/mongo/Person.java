@@ -5,8 +5,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 
 /**
-* Created by evacchi on 26/09/14.
-*/
+ * Created by evacchi on 26/09/14.
+ */
 public class Person {
     @Id
     ObjectId id;
@@ -37,9 +37,7 @@ public class Person {
 
     @Override
     public String toString() {
-        return "Person{" +
-                "name='" + name + '\'' +
-                ", address=" + getAddress() +
-                '}';
+        return "Person{" + "name='" + name + '\'' + ", address=" + getAddress()
+                + '}';
     }
 }

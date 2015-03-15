@@ -21,16 +21,16 @@ import org.springframework.data.annotation.Id;
 
 public class Customer {
 
-	@Id
-	private ObjectId id;
+    @Id
+    private ObjectId id;
 
-	private String firstName;
-	private String lastName;
+    private String firstName;
+    private String lastName;
 
-	public Customer(String firstName, String lastName) {
-		this.firstName = firstName;
-		this.lastName = lastName;
-	}
+    public Customer(String firstName, String lastName) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+    }
 
     public ObjectId getId() {
         return id;
@@ -45,13 +45,14 @@ public class Customer {
     }
 
     @Override
-	public String toString() {
-		return String.format("Customer[id=%s, firstName='%s', lastName='%s']", id,
-				firstName, lastName);
-	}
+    public String toString() {
+        return String.format("Customer[id=%s, firstName='%s', lastName='%s']",
+                id, firstName, lastName);
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		return obj instanceof Customer && ((Customer)obj).getId().equals(this.getId());
-	}
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof Customer
+                && ((Customer) obj).getId().equals(this.getId());
+    }
 }

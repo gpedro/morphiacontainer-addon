@@ -1,52 +1,37 @@
 package org.tylproject.vaadin.addon.mongo;
 
-import com.mongodb.MongoClient;
-import com.vaadin.data.util.BeanItem;
-import com.vaadin.data.util.filter.And;
-import com.vaadin.data.util.filter.Not;
-import com.vaadin.data.util.filter.Or;
-import com.vaadin.data.util.filter.SimpleStringFilter;
-import junit.framework.Assert;
-import junit.framework.TestCase;
-import org.springframework.data.domain.Sort;
-import org.tylproject.data.mongo.Customer;
-import org.tylproject.data.mongo.Person;
-import org.tylproject.vaadin.addon.MongoContainer;
-
-import org.bson.types.ObjectId;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.data.mongodb.core.MongoOperations;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-
-import java.util.List;
-
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
+
+import org.bson.types.ObjectId;
+import org.junit.Test;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.tylproject.data.mongo.Customer;
+import org.tylproject.vaadin.addon.MongoContainer;
+
+import com.vaadin.data.util.BeanItem;
 
 /**
  * Created by evacchi on 26/09/14.
  */
-//@RunWith(SpringJUnit4ClassRunner.class)
-//@SpringApplicationConfiguration(classes = SampleMongoApplication.class)
+// @RunWith(SpringJUnit4ClassRunner.class)
+// @SpringApplicationConfiguration(classes = SampleMongoApplication.class)
 
 public class MongoContainerTest extends BaseTest {
     @Test
     public void testProperties() {
-        System.out.println("propids"+builder().build().getContainerPropertyIds());
+        System.out.println("propids"
+                + builder().build().getContainerPropertyIds());
         assertNotEquals(0, builder().build().getContainerPropertyIds());
     }
 
-
-
     @Test
-    public void testSize(){
+    public void testSize() {
         assertEquals(builder().build().size(), 7);
     }
 
@@ -77,16 +62,15 @@ public class MongoContainerTest extends BaseTest {
         final MongoContainer<Customer> mc = builder().build();
 
         ObjectId id = mc.getIdByIndex(5);
-        Customer ev = mongoOps.findOne(query(where("firstName").is("Keith")), Customer.class);
-                System.out.println(ev);
-                assertEquals(ev.getId(), id);
+        Customer ev = mongoOps.findOne(query(where("firstName").is("Keith")),
+                Customer.class);
+        System.out.println(ev);
+        assertEquals(ev.getId(), id);
 
     }
 
-
     /**
-     * Version 0.9.5 raised an exception
-     * when containsId() was called twice
+     * Version 0.9.5 raised an exception when containsId() was called twice
      */
     @Test
     public void testContainsId() {
@@ -96,13 +80,11 @@ public class MongoContainerTest extends BaseTest {
         mc.containsId(firstId);
         mc.containsId(firstId);
 
-
     }
 
     @Test
     public void testSort() {
-        final MongoContainer<Customer> mc =
-                builder().build();
+        final MongoContainer<Customer> mc = builder().build();
 
         final Object[] columns = { "lastName" };
         final boolean[] ascending = { false };
@@ -113,21 +95,20 @@ public class MongoContainerTest extends BaseTest {
         assertEquals("Scott", mc.getItem(id1).getBean().getLastName());
 
         for (int i = 0; i < mc.size(); i++) {
-            Object id = mc.getIdByIndex(i+1);
+            Object id = mc.getIdByIndex(i + 1);
             id1 = mc.nextItemId(id1);
             assertEquals(id1, id);
         }
 
-        assertEquals(mc.getItem(mc.lastItemId()).getBean().getLastName(), "Long");
+        assertEquals(mc.getItem(mc.lastItemId()).getBean().getLastName(),
+                "Long");
 
     }
 
     @Test
     public void testRemoveItem() {
         final Criteria c = where("firstName").regex(".*d.*");
-        final MongoContainer<Customer> mc =
-                builder().forCriteria(c)
-                .build();
+        final MongoContainer<Customer> mc = builder().forCriteria(c).build();
 
         int initSize = mc.size();
 
@@ -138,18 +119,14 @@ public class MongoContainerTest extends BaseTest {
         assertNotEquals(initSize, mc.size());
     }
 
-
     @Test
     public void testAddItem() {
         final MongoContainer<Customer> mc = builder().build();
         final Customer ljenkins = new Customer("Leroy", "Jenkins");
         mc.addEntity(ljenkins);
-        assertFalse(
-            mongoOps.find(
-                Query.query(
-                   where("firstName").is("Leroy")
-                    .and("lastName") .is("Jenkins")), Customer.class).isEmpty()
-        );
+        assertFalse(mongoOps.find(
+                Query.query(where("firstName").is("Leroy").and("lastName")
+                        .is("Jenkins")), Customer.class).isEmpty());
     }
 
     @Test

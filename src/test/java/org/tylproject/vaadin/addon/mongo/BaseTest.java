@@ -1,6 +1,5 @@
 package org.tylproject.vaadin.addon.mongo;
 
-import com.mongodb.MongoClient;
 import org.junit.After;
 import org.junit.Before;
 import org.springframework.data.domain.Sort;
@@ -9,11 +8,12 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.tylproject.data.mongo.Customer;
 import org.tylproject.vaadin.addon.MongoContainer;
 
+import com.mongodb.MongoClient;
+
 /**
  * Created by evacchi on 09/01/15.
  */
 public class BaseTest {
-
 
     protected final MongoOperations mongoOps;
     protected final Class<Customer> beanClass = Customer.class;
@@ -27,11 +27,9 @@ public class BaseTest {
     }
 
     public MongoContainer.Builder<Customer> builder() {
-        return MongoContainer.Builder.forEntity(beanClass,mongoOps)
-                .withPageSize(3)
-                .sortedBy(new Sort("firstName"));
+        return MongoContainer.Builder.forEntity(beanClass, mongoOps)
+                .withPageSize(3).sortedBy(new Sort("firstName"));
     }
-
 
     @Before
     public void setupDatabase() throws Exception {
@@ -45,10 +43,9 @@ public class BaseTest {
         mongoOps.save(new Customer("Susan", "Long"));
     }
 
-
     @After
     public void teardownDatabase() {
-        for (Customer c: mongoOps.findAll(Customer.class))
+        for (Customer c : mongoOps.findAll(Customer.class))
             mongoOps.remove(c);
     }
 }

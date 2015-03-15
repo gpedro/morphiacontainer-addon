@@ -1,14 +1,14 @@
 package org.tylproject.vaadin.addon.mongo;
 
-import com.mongodb.Mongo;
-import com.mongodb.MongoClient;
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.tylproject.data.mongo.Person;
 import org.tylproject.vaadin.addon.MongoContainer;
 
-import static org.junit.Assert.assertEquals;
+import com.mongodb.MongoClient;
 
 /**
  * Created by evacchi on 25/02/15.
@@ -25,9 +25,9 @@ public class MongoBuilderTest {
 
     @Test
     public void testProperties() {
-        MongoContainer<Person> ps =
-                MongoContainer.Builder.forEntity(Person.class, makeMongoOps())
-                    .withProperty("name").build();
+        MongoContainer<Person> ps = MongoContainer.Builder
+                .forEntity(Person.class, makeMongoOps()).withProperty("name")
+                .build();
 
         assertEquals(1, ps.getContainerPropertyIds().size());
         assertEquals(String.class, ps.getType("name"));
@@ -36,20 +36,17 @@ public class MongoBuilderTest {
 
     @Test
     public void testNestedProperties() {
-        MongoContainer<Person> ps =
-            MongoContainer.Builder.forEntity(Person.class, makeMongoOps()).build();
+        MongoContainer<Person> ps = MongoContainer.Builder.forEntity(
+                Person.class, makeMongoOps()).build();
 
         assertEquals(2, ps.getContainerPropertyIds().size());
 
-
-        MongoContainer<Person> psNested =
-            MongoContainer.Builder.forEntity(Person.class, makeMongoOps())
-                    .withNestedProperty("address.street", String.class).build();
+        MongoContainer<Person> psNested = MongoContainer.Builder
+                .forEntity(Person.class, makeMongoOps())
+                .withNestedProperty("address.street", String.class).build();
 
         assertEquals(3, psNested.getContainerPropertyIds().size());
 
     }
-
-
 
 }
